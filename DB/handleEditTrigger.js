@@ -103,6 +103,11 @@ function handleEditTrigger(e) {
   const NUM_B_TO_Z = 25; // B~Z는 25개 열
   if (insertRow) {
     const dataToInsert = targetRow.slice(1, 1 + NUM_B_TO_Z); // 1~25번 인덱스 (총 25개)
+    // B~Z에 들어갈 값과 열 이름을 함께 로그로 출력
+    const colNames = targetHeaders.slice(1, 1 + NUM_B_TO_Z);
+    for (let i = 0; i < NUM_B_TO_Z; i++) {
+      Logger.log(`B~Z 열 로그: 열=${String.fromCharCode(66 + i)} / 헤더=${colNames[i]} / 값=${dataToInsert[i]}`);
+    }
     Logger.log("dataToInsert.length: " + dataToInsert.length);
     targetSheet
       .getRange(insertRow, 2, 1, NUM_B_TO_Z) // B열(2)부터 25개 열
