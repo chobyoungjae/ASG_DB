@@ -100,16 +100,14 @@ function handleEditTrigger(e) {
     }
   }
 
+  const NUM_B_TO_Z = 25; // B~Z는 25개 열
   if (insertRow) {
-    // B~마지막열까지의 열 개수 계산
-    const numTargetCols = targetSheet.getLastColumn() - 1; // B~마지막열
-    const dataToInsert = targetRow.slice(1, 1 + numTargetCols);
-    Logger.log("numTargetCols: " + numTargetCols);
+    const dataToInsert = targetRow.slice(1, 1 + NUM_B_TO_Z); // 1~25번 인덱스 (총 25개)
     Logger.log("dataToInsert.length: " + dataToInsert.length);
     targetSheet
-      .getRange(insertRow, 2, 1, numTargetCols)
+      .getRange(insertRow, 2, 1, NUM_B_TO_Z) // B열(2)부터 25개 열
       .setValues([dataToInsert]);
-    Logger.log("B~마지막열 빈 행에 데이터 입력: " + insertRow);
+    Logger.log("B~Z 빈 행에 데이터 입력: " + insertRow);
   } else {
     targetSheet.appendRow(targetRow);
     Logger.log("appendRow 실행");
