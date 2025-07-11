@@ -101,13 +101,16 @@ function handleEditTrigger(e) {
   }
 
   if (insertRow) {
-    // B~Z열에만 데이터 입력 (A열은 건드리지 않음)
+    // B~마지막열까지의 열 개수 계산
+    const numTargetCols = targetSheet.getLastColumn() - 1; // B~마지막열
+    const dataToInsert = targetRow.slice(1, 1 + numTargetCols);
+    Logger.log("numTargetCols: " + numTargetCols);
+    Logger.log("dataToInsert.length: " + dataToInsert.length);
     targetSheet
-      .getRange(insertRow, 2, 1, targetRow.length - 1)
-      .setValues([targetRow.slice(1, 26)]);
-    Logger.log("B~Z 빈 행에 데이터 입력: " + insertRow);
+      .getRange(insertRow, 2, 1, numTargetCols)
+      .setValues([dataToInsert]);
+    Logger.log("B~마지막열 빈 행에 데이터 입력: " + insertRow);
   } else {
-    // 빈 행이 없으면 appendRow로 추가
     targetSheet.appendRow(targetRow);
     Logger.log("appendRow 실행");
   }
