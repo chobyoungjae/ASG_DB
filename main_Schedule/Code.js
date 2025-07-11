@@ -36,16 +36,17 @@ function onEdit(e) {
 
     let calendarId = null;
     for (let i = 1; i < docData.length; i++) {
+      if (!docData[i][1] || docData[i][1] === "주인") continue; // 이름 없거나 헤더면 skip
       Logger.log(
         "문서ID 시트 " +
           i +
           "행 B열: " +
           docData[i][1] +
-          ", 현재행 B열: " +
-          data[1]
+          ", 현재행 D열: " +
+          data[3]
       );
-      if (docData[i][1] === data[1]) {
-        calendarId = docData[i][2];
+      if (docData[i][1] === data[3]) {
+        calendarId = docData[i][4];
         Logger.log("캘린더ID 찾음: " + calendarId);
         break;
       }
@@ -55,21 +56,22 @@ function onEdit(e) {
       return;
     }
 
-    const eventTitle = data[8];
-    const eventDate = new Date(data[12]);
+    // 아래 인덱스는 시트 구조에 맞게 수정 필요!
+    // 예시: data[8] = 가게명(제목), data[1] = 방문일자(날짜), data[10] = 상세주소 등
+    const eventTitle = data[7]; // TODO: 이벤트 제목으로 쓸 값의 인덱스로 수정 (예: 가게명)
+    const eventDate = new Date(data[11]); // TODO: 이벤트 날짜로 쓸 값의 인덱스로 수정 (예: 방문일자)
     Logger.log("이벤트 제목: " + eventTitle + ", 날짜: " + eventDate);
+    // TM 날짜 포맷 변환 (예: 25.07.12)
+    const tmDateObj = new Date(data[1]);
+    const tmDateStr = tmDateObj.getFullYear().toString().slice(2) + '.' +
+      String(tmDateObj.getMonth() + 1).padStart(2, '0') + '.' +
+      String(tmDateObj.getDate()).padStart(2, '0');
+
     const eventDesc =
-      "상세주소 : " +
-      data[11] +
-      "\n" +
-      "사업자번호 : " +
-      data[10] +
-      "\n" +
-      "전화번호 : " +
-      data[13] +
-      "\n" +
-      "TM 날자 : " +
-      data[2];
+      "상세주소 : " + data[10] + "\n" +
+      "사업자번호 : " + data[9] + "\n" +
+      "전화번호 : " + data[12] + "\n" +
+      "TM 날자 : " + tmDateStr;
     Logger.log("이벤트 설명: " + eventDesc);
 
     const calendar = CalendarApp.getCalendarById(calendarId);
