@@ -1,5 +1,14 @@
+// 전역 변수로 중복 실행 방지
+let isProcessing = false;
+
 function onEdit(e) {
   try {
+    // 중복 실행 방지
+    if (isProcessing) {
+      Logger.log("이미 처리 중, 중복 실행 방지");
+      return;
+    }
+    
     Logger.log("onEdit 시작");
     const sheet = e.range.getSheet();
     Logger.log("수정된 시트 이름: " + sheet.getName());
@@ -18,12 +27,33 @@ function onEdit(e) {
       Logger.log("헤더 행, 종료");
       return;
     }
+    
+    // 수정 전 값과 현재 값 비교 (중복 실행 방지)
+    const oldValue = e.oldValue;
+    const newValue = e.value;
+    Logger.log("수정 전 값: " + oldValue + ", 수정 후 값: " + newValue);
+    
+    // 값이 실제로 변경되지 않았거나, 둘 다 null/undefined이면 종료
+    if (oldValue === newValue || (oldValue === null && newValue === null) || (oldValue === undefined && newValue === undefined)) {
+      Logger.log("값이 변경되지 않음, 종료");
+      return;
+    }
+    
+    // 처리 시작 표시
+    isProcessing = true;
+    
     Logger.log("D열 수정 감지, 데이터 읽기 시작");
 
     const data = sheet
       .getRange(row, 1, 1, sheet.getLastColumn())
       .getValues()[0];
     Logger.log("현재 행 데이터: " + JSON.stringify(data));
+    
+    // AB열(28번째 열)에 기존 고유ID가 있는지 확인
+    const existingEventId = data[27]; // AB열은 28번째 열이므로 인덱스 27
+    Logger.log("기존 고유ID 확인: " + existingEventId);
+    
+    // 문서ID 시트 데이터 미리 읽기
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const docSheet = ss.getSheetByName("문서ID");
     if (!docSheet) {
@@ -34,6 +64,54 @@ function onEdit(e) {
     const docData = docSheet.getDataRange().getValues();
     Logger.log("문서ID 시트 데이터: " + JSON.stringify(docData));
 
+    if (existingEventId && existingEventId !== "") {
+      Logger.log("기존 고유ID 발견, 사용자 확인 필요");
+      
+      // 사용자에게 확인 요청
+      const ui = SpreadsheetApp.getUi();
+      const response = ui.alert(
+        '영업자 변경 확인',
+        '영업자를 변경하시고 캘린더를 업데이트 하시겠습니까?',
+        ui.ButtonSet.YES_NO
+      );
+      
+      if (response === ui.Button.NO) {
+        Logger.log("사용자가 취소 선택, 작업 중단");
+        return;
+      }
+      
+      Logger.log("사용자가 수락 선택, 기존 이벤트 삭제 시작");
+      
+      // 기존 영업자 이름
+      const prevOwner = e.oldValue;
+      // 문서ID 시트에서 기존 영업자의 캘린더ID 찾기
+      let prevCalendarId = null;
+      for (let i = 1; i < docData.length; i++) {
+        if (!docData[i][1] || docData[i][1] === "주인") continue;
+        if (docData[i][1] === prevOwner) {
+          prevCalendarId = docData[i][4];
+          break;
+        }
+      }
+      if (prevCalendarId) {
+        try {
+          const prevCalendar = CalendarApp.getCalendarById(prevCalendarId);
+          const existingEvent = prevCalendar.getEventById(existingEventId);
+          if (existingEvent) {
+            existingEvent.deleteEvent();
+            Logger.log("기존 영업자 캘린더에서 이벤트 삭제 완료: " + existingEventId);
+          } else {
+            Logger.log("기존 영업자 캘린더에서 이벤트를 찾을 수 없음: " + existingEventId);
+          }
+        } catch (deleteError) {
+          Logger.log("기존 영업자 캘린더에서 이벤트 삭제 중 오류: " + deleteError);
+        }
+      } else {
+        Logger.log("기존 영업자의 캘린더ID를 찾을 수 없음: " + prevOwner);
+      }
+    }
+
+    // (이하 기존 코드: 새 영업자 캘린더ID 찾기 및 이벤트 생성)
     let calendarId = null;
     for (let i = 1; i < docData.length; i++) {
       if (!docData[i][1] || docData[i][1] === "주인") continue; // 이름 없거나 헤더면 skip
@@ -81,12 +159,19 @@ function onEdit(e) {
     });
     Logger.log("이벤트 생성 완료, ID: " + event.getId());
 
-    sheet.getRange(row, 27).setValue("전송완료");
-    Logger.log("AA열(전송상태) 기록 완료");
+    // 기존 고유ID가 있었으면 "변경완료", 없었으면 "✅캘린더등록"
+    const statusMessage = existingEventId && existingEventId !== "" ? "🔄변경완료" : "✅캘린더등록";
+    sheet.getRange(row, 27).setValue(statusMessage);
+    Logger.log("AA열(전송상태) 기록 완료: " + statusMessage);
     sheet.getRange(row, 28).setValue(event.getId());
     Logger.log("AB열(고유ID) 기록 완료");
     Logger.log("이벤트 등록 및 시트 기록 전체 완료");
+    
+    // 처리 완료 표시
+    isProcessing = false;
   } catch (err) {
     Logger.log("오류 발생: " + err);
+    isProcessing = false;
   }
 }
+
