@@ -119,7 +119,7 @@ function handleEditTrigger(e) {
   }
   // 전송상태 기록 (원본 시트)
   if (colIdx("전송상태") > 0) {
-    sheet.getRange(row, colIdx("전송상태")).setValue("전송완료");
+    sheet.getRange(row, colIdx("전송상태")).setValue("✅전송완료");
   }
   Logger.log("appendRow 실행 후");
   Logger.log(
