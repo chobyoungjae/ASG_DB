@@ -49,6 +49,9 @@ function onEdit(e) {
       .getValues()[0];
     Logger.log("현재 행 데이터: " + JSON.stringify(data));
     
+    // 바뀔 영업자 이름을 함수 상단에서 선언
+    let newOwner = data[3];
+
     // AB열(28번째 열)에 기존 고유ID가 있는지 확인
     const existingEventId = data[27]; // AB열은 28번째 열이므로 인덱스 27
     Logger.log("기존 고유ID 확인: " + existingEventId);
@@ -67,11 +70,11 @@ function onEdit(e) {
     if (existingEventId && existingEventId !== "") {
       Logger.log("기존 고유ID 발견, 사용자 확인 필요");
       
-      // 사용자에게 확인 요청
+      // 사용자에게 확인 요청 (이름 강조, 이모지, 줄바꿈)
       const ui = SpreadsheetApp.getUi();
       const response = ui.alert(
         '영업자 변경 확인',
-        '영업자를 변경하시고 캘린더를 업데이트 하시겠습니까?',
+        '⭐️ 영업자를 ' + newOwner + '님으로 변경 하시고\n\n캘린더를 업데이트 하시겠습니까?',
         ui.ButtonSet.YES_NO
       );
       
@@ -159,8 +162,8 @@ function onEdit(e) {
     });
     Logger.log("이벤트 생성 완료, ID: " + event.getId());
 
-    // 기존 고유ID가 있었으면 "변경완료", 없었으면 "✅캘린더등록"
-    const statusMessage = existingEventId && existingEventId !== "" ? "🔄변경완료" : "✅캘린더등록";
+    // 기존 고유ID가 있었으면 "🔄변경완료_XXX", 없었으면 "✅캘린더등록"
+    const statusMessage = existingEventId && existingEventId !== "" ? "🔄변경완료_" + newOwner : "✅캘린더등록";
     sheet.getRange(row, 27).setValue(statusMessage);
     Logger.log("AA열(전송상태) 기록 완료: " + statusMessage);
     sheet.getRange(row, 28).setValue(event.getId());
