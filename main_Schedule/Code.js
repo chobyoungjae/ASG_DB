@@ -3,27 +3,27 @@ let isProcessing = false;
 
 function handleEditTrigger(e) {
   Logger.log("handleEditTrigger 진입, e: " + JSON.stringify(e));
-  if (!e || !e.range) {
-    Logger.log("e 또는 e.range가 없음, 종료");
-    return;
-  }
-  const sheet = e.range.getSheet();
-  const row = e.range.getRow();
-  const col = e.range.getColumn();
-  const sheetName = sheet.getName();
-  Logger.log("시트명: " + sheetName + ", 행: " + row + ", 열: " + col);
-  // 중복 실행 방지
-  if (isProcessing) {
-    Logger.log("이미 처리 중, 중복 실행 방지");
-    return;
-  }
-
-  if (sheetName !== "스케줄") return;
-  if (row === 1) return; // 헤더 무시
-  if (col !== 4) return; // D열(4)만 허용
-
-  isProcessing = true;
+  var lock = LockService.getScriptLock();
   try {
+    lock.waitLock(10000); // 최대 10초 대기
+  } catch (ex) {
+    Logger.log("Lock 획득 실패, 중복 실행 방지: " + ex);
+    return;
+  }
+  try {
+    if (!e || !e.range) {
+      Logger.log("e 또는 e.range가 없음, 종료");
+      return;
+    }
+    const sheet = e.range.getSheet();
+    const row = e.range.getRow();
+    const col = e.range.getColumn();
+    const sheetName = sheet.getName();
+    Logger.log("시트명: " + sheetName + ", 행: " + row + ", 열: " + col);
+    if (sheetName !== "스케줄") return;
+    if (row === 1) return; // 헤더 무시
+    if (col !== 4) return; // D열(4)만 허용
+
     Logger.log("onEdit 시작");
     const oldValue = e.oldValue;
     const newValue = e.value;
@@ -95,7 +95,7 @@ function handleEditTrigger(e) {
   } catch (err) {
     Logger.log("오류 발생: " + err);
   } finally {
-    isProcessing = false;
+    lock.releaseLock();
   }
 }
 
