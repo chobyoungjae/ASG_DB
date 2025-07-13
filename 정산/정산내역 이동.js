@@ -14,7 +14,7 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   // 사용자에게 확인 메시지
   const ui = SpreadsheetApp.getUi();
   const response = ui.alert(
-    `${currentSheetName}의 데이터는 쿠팡 정산내역 시트로 이동하시겠습니까?`,
+    `${currentSheetName}의 데이터를 쿠팡 정산내역 시트로 이동하시겠습니까?`,
     ui.ButtonSet.OK_CANCEL
   );
   if (response !== ui.Button.OK) {
@@ -24,10 +24,17 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
 
   // 0. 스케줄 시트 J열 값 목록 가져오기
   let scheduleJValues = [];
+  let scheduleJCMap = {};
   if (scheduleSheet) {
     const scheduleLastRow = scheduleSheet.getLastRow();
     if (scheduleLastRow >= 2) {
       scheduleJValues = scheduleSheet.getRange(2, 10, scheduleLastRow - 1, 1).getValues().flat().map(String);
+      // J열과 C열 매핑
+      const scheduleJ = scheduleSheet.getRange(2, 10, scheduleLastRow - 1, 1).getValues().flat().map(String);
+      const scheduleC = scheduleSheet.getRange(2, 3, scheduleLastRow - 1, 1).getValues().flat().map(String);
+      scheduleJ.forEach((jVal, idx) => {
+        scheduleJCMap[jVal] = scheduleC[idx];
+      });
     }
   }
 
@@ -104,8 +111,8 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   // 9. A~G, H열 값으로 붙여넣기 (1~8열)
   coupangSheet.getRange(pasteRow, 1, ag_h_Data.length, 8).setValues(ag_h_Data);
 
-  // 10. L, M, N, O 값 계산해서 붙여넣기
-  const lmnOData = filtered.slice(startIdx).map((row, idx) => {
+  // 10. L, M, N, O, P 값 계산해서 붙여넣기
+  const lmnOPData = filtered.slice(startIdx).map((row, idx) => {
     const gValue = String(row[6]).trim();
     const cValue = String(row[2]).trim();
     const ownerRow = ownerData.find(r => String(r[0]).trim() === gValue);
@@ -123,15 +130,20 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
     }
     const mValue = ownerRow ? ownerRow[3] : "";
     const nValue = ownerRow ? ownerRow[4] : "";
-    return [lValue, mValue, nValue, oValue];
+    // P열: 쿠팡 정산내역 C열(row[2]) 값이 스케줄 J열에 있으면, 그 J열에 해당하는 스케줄 C열 값을 넣음
+    let pValue = "";
+    if (scheduleJCMap[cValue]) {
+      pValue = scheduleJCMap[cValue];
+    }
+    return [lValue, mValue, nValue, oValue, pValue];
   });
-  // L열(12), M열(13), N열(14), O열(15)
-  coupangSheet.getRange(pasteRow, 12, lmnOData.length, 4).setValues(lmnOData);
+  // L열(12), M열(13), N열(14), O열(15), P열(16)
+  coupangSheet.getRange(pasteRow, 12, lmnOPData.length, 5).setValues(lmnOPData);
 
   // 11. K열(11)에 =SUM(L:N) 수식 입력
   for (let i = 0; i < ag_h_Data.length; i++) {
     const rowNum = pasteRow + i;
-    coupangSheet.getRange(rowNum, 11).setFormula("=SUM(L" + rowNum + ":N" + rowNum + ")");
+    coupangSheet.getRange(rowNum, 11).setFormula("=SUM(L" + rowNum + ":O" + rowNum + ")");
   }
 
   ui.alert("새로운 데이터가 쿠팡 정산내역 시트에 추가되었습니다.");
