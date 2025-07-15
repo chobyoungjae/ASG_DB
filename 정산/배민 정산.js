@@ -6,6 +6,16 @@ function baeminSettlement() {
   const historySheet = ss.getSheetByName("배민 정산내역");
   const ui = SpreadsheetApp.getUi();
 
+  // 확인/취소 버튼이 있는 알림창 추가
+  const response = ui.alert(
+    `${sheet.getName()}의 데이터를 배민민 정산내역 시트로 이동하시겠습니까?`,
+    ui.ButtonSet.OK_CANCEL
+  );
+  if (response !== ui.Button.OK) {
+    ui.alert("작업이 취소되었습니다.");
+    return;
+  }
+
   if (!oldSheet || !newSheet || !historySheet) {
     ui.alert("시트 이름을 확인하세요: 기존체계, 신규체계, 배민 정산내역");
     return;
@@ -77,8 +87,17 @@ function baeminSettlement() {
     .filter((row) => row[0] && !row[8])
     .map((row) => row.slice(0, 4));
   if (toHistory.length > 0) {
-    const lastRow = historySheet.getLastRow() + 1;
-    historySheet.getRange(lastRow, 2, toHistory.length, 4).setValues(toHistory);
+    // B열에서 마지막 값이 있는 행 찾기
+    const historyB = historySheet.getRange(1, 2, historySheet.getLastRow()).getValues();
+    let lastBRow = 0;
+    for (let i = historyB.length - 1; i >= 0; i--) {
+      if (historyB[i][0] !== "" && historyB[i][0] !== null) {
+        lastBRow = i + 1; // 1-based index
+        break;
+      }
+    }
+    const insertRow = lastBRow + 1;
+    historySheet.getRange(insertRow, 2, toHistory.length, 4).setValues(toHistory);
   }
 
   ui.alert("배민 정산이 완료되었습니다!");
