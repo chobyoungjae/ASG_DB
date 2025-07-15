@@ -47,8 +47,8 @@ function showPersonalSettlement_김정은() { showPersonalSettlement('김정은'
 
 function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const currentSheet = ss.getActiveSheet();
-  const currentSheetName = currentSheet.getName();
+  const currentSheet = ss.getSheetByName('쿠팡 당월정산');
+  const currentSheetName = '쿠팡 당월정산';
   const ownerSheet = ss.getSheetByName("영업자");
   const coupangSheet = ss.getSheetByName("쿠팡 정산내역");
   const scheduleSheet = ss.getSheetByName("스케줄");

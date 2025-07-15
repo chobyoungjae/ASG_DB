@@ -1,6 +1,6 @@
 function baeminSettlement() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getActiveSheet(); // 함수 실행 시킨 시트
+  const sheet = ss.getSheetByName('배민 당월정산'); // 고정된 시트 사용
   const oldSheet = ss.getSheetByName("기존체계");
   const newSheet = ss.getSheetByName("신규체계");
   const historySheet = ss.getSheetByName("배민 정산내역");
