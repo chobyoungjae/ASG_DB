@@ -1,0 +1,85 @@
+function baeminSettlement() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getActiveSheet(); // 함수 실행 시킨 시트
+  const oldSheet = ss.getSheetByName("기존체계");
+  const newSheet = ss.getSheetByName("신규체계");
+  const historySheet = ss.getSheetByName("배민 정산내역");
+  const ui = SpreadsheetApp.getUi();
+
+  if (!oldSheet || !newSheet || !historySheet) {
+    ui.alert("시트 이름을 확인하세요: 기존체계, 신규체계, 배민 정산내역");
+    return;
+  }
+
+  // 1. 기존체계 A2:H 데이터 → 실행시킨 시트 3행부터
+  const oldData = oldSheet
+    .getRange(2, 1, oldSheet.getLastRow() - 1, 8)
+    .getValues();
+  let targetRow = 3;
+  if (oldData.length > 0) {
+    sheet.getRange(targetRow, 1, oldData.length, 8).setValues(oldData);
+    targetRow += oldData.length;
+  }
+
+  // 2. 신규체계 A2:E → 실행시킨 시트 A:E, L2:L → 실행시킨 시트 H, 기존 데이터 아래행부터
+  const newSheetLastRow = newSheet.getLastRow();
+  const newDataAtoE = newSheet
+    .getRange(2, 1, newSheetLastRow - 1, 5)
+    .getValues(); // A~E
+  const newDataL = newSheet.getRange(2, 12, newSheetLastRow - 1, 1).getValues(); // L
+
+  const mergedNewData = [];
+  for (let i = 0; i < newDataAtoE.length; i++) {
+    mergedNewData.push([
+      ...newDataAtoE[i], // A~E
+      "",
+      "", // F, G 빈칸
+      newDataL[i][0], // H
+    ]);
+  }
+
+  if (mergedNewData.length > 0) {
+    sheet
+      .getRange(targetRow, 1, mergedNewData.length, 8)
+      .setValues(mergedNewData);
+    targetRow += mergedNewData.length;
+  }
+
+  // 3. 중복 제거 및 합산 (A열 기준, E~H sumif)
+  let allData = sheet.getRange(3, 1, targetRow - 3, 12).getValues();
+  const uniqueMap = {};
+  for (let row of allData) {
+    const key = row[0];
+    if (!key) continue;
+    if (!uniqueMap[key]) {
+      uniqueMap[key] = row.slice();
+    } else {
+      // E(4), F(5), G(6), H(7) 합산
+      for (let i = 4; i <= 7; i++) {
+        uniqueMap[key][i] =
+          (Number(uniqueMap[key][i]) || 0) + (Number(row[i]) || 0);
+      }
+    }
+  }
+  // 중복 제거된 데이터로 시트 갱신
+  const deduped = Object.values(uniqueMap);
+  sheet.getRange(3, 1, deduped.length, 12).setValues(deduped);
+  // 남은 행은 지우기
+  if (deduped.length < targetRow - 3) {
+    sheet
+      .getRange(3 + deduped.length, 1, targetRow - 3 - deduped.length, 12)
+      .clearContent();
+  }
+
+  // 4. I열이 공백인 A열 데이터 → 배민 정산내역 B:E로 전송
+  const resultData = sheet.getRange(3, 1, deduped.length, 9).getValues();
+  const toHistory = resultData
+    .filter((row) => row[0] && !row[8])
+    .map((row) => row.slice(0, 4));
+  if (toHistory.length > 0) {
+    const lastRow = historySheet.getLastRow() + 1;
+    historySheet.getRange(lastRow, 2, toHistory.length, 4).setValues(toHistory);
+  }
+
+  ui.alert("배민 정산이 완료되었습니다!");
+}

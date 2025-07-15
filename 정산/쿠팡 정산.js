@@ -1,3 +1,14 @@
+function onOpen() {
+  SpreadsheetApp.getUi()
+    .createMenu("정산") // 메뉴 이름 변경
+    .addItem(
+      "쿠팡 정산",
+      "copyFilteredSortedDataToCoupangSheet_AppendAfterLast"
+    )
+    .addItem("배민 정산", "baeminSettlement") // 배민 정산 버튼 추가
+    .addToUi();
+}
+
 function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const currentSheet = ss.getActiveSheet();
@@ -7,7 +18,9 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const scheduleSheet = ss.getSheetByName("스케줄");
 
   if (!ownerSheet || !coupangSheet) {
-    SpreadsheetApp.getUi().alert("영업자 시트 또는 쿠팡 정산내역 시트를 찾을 수 없습니다.");
+    SpreadsheetApp.getUi().alert(
+      "영업자 시트 또는 쿠팡 정산내역 시트를 찾을 수 없습니다."
+    );
     return;
   }
 
@@ -28,10 +41,22 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   if (scheduleSheet) {
     const scheduleLastRow = scheduleSheet.getLastRow();
     if (scheduleLastRow >= 2) {
-      scheduleJValues = scheduleSheet.getRange(2, 10, scheduleLastRow - 1, 1).getValues().flat().map(String);
+      scheduleJValues = scheduleSheet
+        .getRange(2, 10, scheduleLastRow - 1, 1)
+        .getValues()
+        .flat()
+        .map(String);
       // J열과 C열 매핑
-      const scheduleJ = scheduleSheet.getRange(2, 10, scheduleLastRow - 1, 1).getValues().flat().map(String);
-      const scheduleC = scheduleSheet.getRange(2, 3, scheduleLastRow - 1, 1).getValues().flat().map(String);
+      const scheduleJ = scheduleSheet
+        .getRange(2, 10, scheduleLastRow - 1, 1)
+        .getValues()
+        .flat()
+        .map(String);
+      const scheduleC = scheduleSheet
+        .getRange(2, 3, scheduleLastRow - 1, 1)
+        .getValues()
+        .flat()
+        .map(String);
       scheduleJ.forEach((jVal, idx) => {
         scheduleJCMap[jVal] = scheduleC[idx];
       });
@@ -39,8 +64,10 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   }
 
   // 1. 영업자 코드 목록(A열)과 추가정보(F열까지) 가져오기
-  const ownerData = ownerSheet.getRange(1, 1, ownerSheet.getLastRow(), 6).getValues();
-  const ownerCodes = ownerData.map(row => String(row[0]).trim());
+  const ownerData = ownerSheet
+    .getRange(1, 1, ownerSheet.getLastRow(), 6)
+    .getValues();
+  const ownerCodes = ownerData.map((row) => String(row[0]).trim());
 
   // 2. 현재 시트의 데이터(A~G) (헤더 제외)
   const lastRow = currentSheet.getLastRow();
@@ -51,7 +78,9 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const data = currentSheet.getRange(2, 1, lastRow - 1, 7).getValues();
 
   // 3. G열 값이 영업자 코드에 있는 행만 필터
-  const filtered = data.filter(row => ownerCodes.includes(String(row[6]).trim()));
+  const filtered = data.filter((row) =>
+    ownerCodes.includes(String(row[6]).trim())
+  );
 
   // 4. A열 기준 오름차순 정렬
   filtered.sort((a, b) => {
@@ -78,16 +107,18 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   // 6. filtered의 B열에서 lastBValue와 같은 값을 "위에서 아래로" 처음 찾음
   let startIdx = 0;
   if (lastBValue) {
-    const idx = filtered.findIndex(row => String(row[1]).trim() === String(lastBValue).trim());
+    const idx = filtered.findIndex(
+      (row) => String(row[1]).trim() === String(lastBValue).trim()
+    );
     if (idx !== -1) {
       startIdx = idx + 1; // 그 다음 행부터
     }
   }
 
   // 7. A~G, H만 값으로 붙여넣기
-  const ag_h_Data = filtered.slice(startIdx).map(row => {
+  const ag_h_Data = filtered.slice(startIdx).map((row) => {
     const gValue = String(row[6]).trim();
-    const ownerRow = ownerData.find(r => String(r[0]).trim() === gValue);
+    const ownerRow = ownerData.find((r) => String(r[0]).trim() === gValue);
     const hValue = ownerRow ? ownerRow[1] : ""; // H: 영업자명 (B열)
     return [...row, hValue];
   });
@@ -115,7 +146,7 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const lmnOPData = filtered.slice(startIdx).map((row, idx) => {
     const gValue = String(row[6]).trim();
     const cValue = String(row[2]).trim();
-    const ownerRow = ownerData.find(r => String(r[0]).trim() === gValue);
+    const ownerRow = ownerData.find((r) => String(r[0]).trim() === gValue);
     // O열: 스케줄 J열 값 중에 C열 값이 "하나라도" 있으면 ownerRow[5], 아니면 ""
     let oValue = "";
     if (scheduleJValues.includes(cValue) && ownerRow) {
@@ -143,7 +174,9 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   // 11. K열(11)에 =SUM(L:N) 수식 입력
   for (let i = 0; i < ag_h_Data.length; i++) {
     const rowNum = pasteRow + i;
-    coupangSheet.getRange(rowNum, 11).setFormula("=SUM(L" + rowNum + ":O" + rowNum + ")");
+    coupangSheet
+      .getRange(rowNum, 11)
+      .setFormula("=SUM(L" + rowNum + ":O" + rowNum + ")");
   }
 
   ui.alert("새로운 데이터가 쿠팡 정산내역 시트에 추가되었습니다.");
