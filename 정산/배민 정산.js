@@ -98,6 +98,12 @@ function baeminSettlement() {
     }
     const insertRow = lastBRow + 1;
     historySheet.getRange(insertRow, 2, toHistory.length, 4).setValues(toHistory);
+    // F, G열에 vlookup 수식 입력
+    for (let i = 0; i < toHistory.length; i++) {
+      const rowNum = insertRow + i;
+      historySheet.getRange(rowNum, 6).setFormula(`=vlookup(E${rowNum},'영업자'!B:I,7,0)`);
+      historySheet.getRange(rowNum, 7).setFormula(`=vlookup(E${rowNum},'영업자'!B:I,8,0)`);
+    }
   }
 
   ui.alert("배민 정산이 완료되었습니다!");

@@ -1,13 +1,49 @@
 function onOpen() {
-  SpreadsheetApp.getUi()
-    .createMenu("정산") // 메뉴 이름 변경
-    .addItem(
-      "쿠팡 정산",
-      "copyFilteredSortedDataToCoupangSheet_AppendAfterLast"
-    )
-    .addItem("배민 정산", "baeminSettlement") // 배민 정산 버튼 추가
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu("정산")
+    .addItem("쿠팡 정산", "copyFilteredSortedDataToCoupangSheet_AppendAfterLast")
+    .addItem("배민 정산", "baeminSettlement")
     .addToUi();
+
+  // 개인정산 메뉴 동적 생성
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ownerSheet = ss.getSheetByName("영업자");
+  if (ownerSheet) {
+    const lastRow = ownerSheet.getLastRow();
+    // B4:B (4행~마지막행) 값만 추출
+    const ownerNames = ownerSheet.getRange(4, 2, lastRow - 3, 1).getValues().flat().filter(name => name);
+    let menu = ui.createMenu("개인정산");
+    ownerNames.forEach(name => {
+      menu.addItem(name, `showPersonalSettlement_${name}`);
+    });
+    menu.addToUi();
+  }
 }
+
+// 각 영업자 이름별로 실행될 함수 동적 생성
+function showPersonalSettlement(name) {
+  createPersonalSheetByName(name);
+}
+
+// 아래는 각 이름별로 개별 함수 생성 (Google Apps Script는 동적 함수 생성이 불가하므로, 빌드 타임에 생성 필요)
+// 예시로 20명까지 생성
+// 실제 영업자 수에 맞게 늘릴 수 있음
+function showPersonalSettlement_김태연() { showPersonalSettlement('김태연'); }
+function showPersonalSettlement_김효진() { showPersonalSettlement('김효진'); }
+function showPersonalSettlement_임기환() { showPersonalSettlement('임기환'); }
+function showPersonalSettlement_성연수() { showPersonalSettlement('성연수'); }
+function showPersonalSettlement_성유담() { showPersonalSettlement('성유담'); }
+function showPersonalSettlement_김동수() { showPersonalSettlement('김동수'); }
+function showPersonalSettlement_김태문() { showPersonalSettlement('김태문'); }
+function showPersonalSettlement_배성일() { showPersonalSettlement('배성일'); }
+function showPersonalSettlement_장제이() { showPersonalSettlement('장제이'); }
+function showPersonalSettlement_송지민() { showPersonalSettlement('송지민'); }
+function showPersonalSettlement_반준우() { showPersonalSettlement('반준우'); }
+function showPersonalSettlement_박수혁() { showPersonalSettlement('박수혁'); }
+function showPersonalSettlement_원스컴퍼니() { showPersonalSettlement('원스컴퍼니'); }
+function showPersonalSettlement_안성훈() { showPersonalSettlement('안성훈'); }
+function showPersonalSettlement_김강민() { showPersonalSettlement('김강민'); }
+function showPersonalSettlement_김정은() { showPersonalSettlement('김정은'); }
 
 function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
