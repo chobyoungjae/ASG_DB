@@ -27,13 +27,25 @@ function createPersonalSheetByName(selectedName) {
   // 시트 복사 및 이름 변경
   const newSheet = sourceSheet.copyTo(ss).setName(selectedName);
 
-  // 실행 시트명
-  // 메뉴에서 실행 시에는 현재 활성 시트명을 사용
-  const execSheetName = ss.getActiveSheet().getName();
+  // 데이터 소스 시트명을 '쿠팡 당월정산'으로 고정
+  const execSheetName = '쿠팡 당월정산';
 
   // B13에 수식 입력
   const formula = `=SORT(FILTER('${execSheetName}'!A:U, '${execSheetName}'!P:P="${selectedName}"), 1, TRUE)`;
   newSheet.getRange("B13").setFormula(formula);
+
+  // 배민 당월정산 시트의 A2:J 데이터 중 D열 값이 selectedName과 같은 행만 → 생성된 시트 Z12부터 붙여넣기
+  const baeminSheet = ss.getSheetByName("배민 당월정산");
+  if (baeminSheet) {
+    const lastRow = baeminSheet.getLastRow();
+    if (lastRow >= 2) {
+      const baeminData = baeminSheet.getRange(2, 1, lastRow - 1, 10).getValues();
+      const filtered = baeminData.filter(row => row[3] === selectedName); // D열(4번째, index 3)
+      if (filtered.length > 0) {
+        newSheet.getRange(13, 26, filtered.length, 10).setValues(filtered); // Z=26
+      }
+    }
+  }
 
   ui.alert("완료되었습니다.");
 }
