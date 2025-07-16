@@ -98,12 +98,20 @@ function baeminSettlement() {
     }
     const insertRow = lastBRow + 1;
     historySheet.getRange(insertRow, 2, toHistory.length, 4).setValues(toHistory);
-    // F, G열에 vlookup 수식 입력
+    // F, G열에 vlookup 수식 대신 실제 값 입력
+    const ownerSheet = ss.getSheetByName('영업자');
+    const ownerData = ownerSheet.getRange(2, 2, ownerSheet.getLastRow() - 1, 8).getValues(); // B2:I
+    const fgValues = [];
     for (let i = 0; i < toHistory.length; i++) {
-      const rowNum = insertRow + i;
-      historySheet.getRange(rowNum, 6).setFormula(`=vlookup(E${rowNum},'영업자'!B:I,7,0)`);
-      historySheet.getRange(rowNum, 7).setFormula(`=vlookup(E${rowNum},'영업자'!B:I,8,0)`);
+      const searchValue = historySheet.getRange(insertRow + i, 5).getValue(); // E열 값
+      const found = ownerData.find(row => row[0] === searchValue); // row[0]은 B열
+      if (found) {
+        fgValues.push([found[6], found[7]]); // H, I
+      } else {
+        fgValues.push(["", ""]);
+      }
     }
+    historySheet.getRange(insertRow, 6, toHistory.length, 2).setValues(fgValues);
   }
 
   ui.alert("배민 정산이 완료되었습니다!");
