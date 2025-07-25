@@ -1,5 +1,12 @@
-// 전역 변수로 중복 실행 방지
+// 전역 변수로 중복 실행 방지 수정완료
 let isProcessing = false;
+
+// 헤더명으로 열 인덱스를 가져오는 함수
+function getColumnIndex(sheet, headerName) {
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const index = headers.indexOf(headerName);
+  return index === -1 ? null : index;
+}
 
 /**
  * 스케줄 시트의 D열(4) 값이 변경될 때 캘린더 이벤트를 생성/변경하는 트리거 함수
@@ -36,9 +43,10 @@ function handleEditTrigger(e) {
       Logger.log("헤더 행, 종료");
       return; // 헤더 무시
     }
-    if (col !== 4) {
-      Logger.log("D열(4) 아님, 종료");
-      return; // D열(4)만 허용
+    const ownerColIndex = getColumnIndex(sheet, "영업자");
+    if (col !== ownerColIndex + 1) {
+      Logger.log("영업자 열 아님, 종료");
+      return; // 영업자 열만 허용
     }
 
     Logger.log("onEdit 시작");
@@ -54,8 +62,10 @@ function handleEditTrigger(e) {
       Logger.log("getRange/getValues 에러: " + rangeErr);
       return;
     }
-    let newOwner = data[3]; // D열: 영업자
-    const existingEventId = data[27]; // AB열: 기존 이벤트 ID
+    const ownerIndex = getColumnIndex(sheet, "영업자");
+    let newOwner = data[ownerIndex]; // 영업자
+    const eventIdIndex = getColumnIndex(sheet, "고유ID");
+    const existingEventId = data[eventIdIndex]; // 고유ID
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const docSheet = ss.getSheetByName("문서ID");
     if (!docSheet) {
@@ -108,7 +118,7 @@ function handleEditTrigger(e) {
     let calendarId = null;
     for (let i = 1; i < docData.length; i++) {
       if (!docData[i][1] || docData[i][1] === "주인") continue;
-      if (docData[i][1] === data[3]) {
+      if (docData[i][1] === data[ownerIndex]) {
         calendarId = docData[i][4];
         break;
       }
@@ -119,16 +129,25 @@ function handleEditTrigger(e) {
       return;
     }
     // 이벤트 정보 준비
-    const eventTitle = data[7]; // H열: 상호명
-    const eventDate = new Date(data[11]); // L열: 상세주소 (실제 날짜라면 M/N열로 조정 필요)
-    const tmDateObj = new Date(data[1]); // B열: TM날짜
+    const titleIndex = getColumnIndex(sheet, "상호명");
+    const visitDateIndex = getColumnIndex(sheet, "방문날자");
+    const tmDateIndex = getColumnIndex(sheet, "TM 날자");
+    const addressIndex = getColumnIndex(sheet, "상세주소");
+    const businessNumIndex = getColumnIndex(sheet, "사업자번호");
+    const phoneIndex = getColumnIndex(sheet, "전화번호");
+    const commentIndex = getColumnIndex(sheet, "코멘트");
+    
+    const eventTitle = data[titleIndex]; // 상호명
+    const eventDate = new Date(data[visitDateIndex]); // 방문날자
+    const tmDateObj = new Date(data[tmDateIndex]); // TM 날자
     const tmDateStr = tmDateObj.getFullYear().toString().slice(2) + '.' +
       String(tmDateObj.getMonth() + 1).padStart(2, '0') + '.' +
       String(tmDateObj.getDate()).padStart(2, '0');
     const eventDesc =
-      "상세주소 : " + data[11] + "\n" + // L열: 상세주소
-      "사업자번호 : " + data[10] + "\n" + // K열: 사업자번호
-      "전화번호 : " + data[13] + "\n" + // N열: 전화번호
+      "상세주소 : " + data[addressIndex] + "\n" + // 상세주소
+      "사업자번호 : " + data[businessNumIndex] + "\n" + // 사업자번호
+      "전화번호 : " + data[phoneIndex] + "\n" + // 전화번호
+      "코멘트 : " + data[commentIndex] + "\n" + // 코멘트
       "TM 날자 : " + tmDateStr;
     Logger.log("이벤트 정보 준비 완료: 제목=" + eventTitle + ", 날짜=" + eventDate);
     // 이벤트 생성
@@ -139,8 +158,9 @@ function handleEditTrigger(e) {
       });
       Logger.log("이벤트 생성 완료, ID: " + event.getId());
       const statusMessage = existingEventId && existingEventId !== "" ? "🔄변경완료_" + newOwner : "✅캘린더등록";
-      sheet.getRange(row, 27).setValue(statusMessage);
-      sheet.getRange(row, 28).setValue(event.getId());
+      const statusIndex = getColumnIndex(sheet, "전송상태");
+      sheet.getRange(row, statusIndex + 1).setValue(statusMessage);
+      sheet.getRange(row, eventIdIndex + 1).setValue(event.getId());
       Logger.log("시트에 상태 및 이벤트ID 기록 완료");
     } catch (eventError) {
       Logger.log("이벤트 생성 중 오류: " + eventError);
