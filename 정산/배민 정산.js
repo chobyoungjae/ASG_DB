@@ -1,6 +1,6 @@
 function baeminSettlement() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sheet = ss.getSheetByName('배민 당월정산'); // 고정된 시트 사용
+  const sheet = ss.getSheetByName("배민 당월정산"); // 고정된 시트 사용
   const oldSheet = ss.getSheetByName("기존체계");
   const newSheet = ss.getSheetByName("신규체계");
   const historySheet = ss.getSheetByName("배민 정산내역");
@@ -81,14 +81,31 @@ function baeminSettlement() {
       .clearContent();
   }
 
-  // 4. I열이 공백인 A열 데이터 → 배민 정산내역 B:E로 전송
+  // 4. 배민 당월정산 A열과 배민 정산내역 B열의 중복되지 않은 데이터만 → 배민 정산내역 B:E로 전송
   const resultData = sheet.getRange(3, 1, deduped.length, 9).getValues();
+
+  // 배민 정산내역 B열의 기존 데이터 가져오기 (중복 체크용)
+  const historyBData = historySheet
+    .getRange(1, 2, historySheet.getLastRow())
+    .getValues();
+  const existingBValues = new Set();
+
+  // B열에서 실제 데이터가 있는 값들만 Set에 추가 (빈 값 제외)
+  for (let row of historyBData) {
+    if (row[0] && row[0] !== "" && row[0] !== null) {
+      existingBValues.add(row[0]);
+    }
+  }
+
+  // 배민 당월정산 A열 중에서 배민 정산내역 B열에 없는 값만 필터링
   const toHistory = resultData
-    .filter((row) => row[0] && !row[8])
-    .map((row) => row.slice(0, 4));
+    .filter((row) => row[0] && !existingBValues.has(row[0])) // A열 값이 있고, B열에 중복되지 않는 경우
+    .map((row) => row.slice(0, 4)); // A~D만 선택
   if (toHistory.length > 0) {
     // B열에서 마지막 값이 있는 행 찾기
-    const historyB = historySheet.getRange(1, 2, historySheet.getLastRow()).getValues();
+    const historyB = historySheet
+      .getRange(1, 2, historySheet.getLastRow())
+      .getValues();
     let lastBRow = 0;
     for (let i = historyB.length - 1; i >= 0; i--) {
       if (historyB[i][0] !== "" && historyB[i][0] !== null) {
@@ -97,21 +114,27 @@ function baeminSettlement() {
       }
     }
     const insertRow = lastBRow + 1;
-    historySheet.getRange(insertRow, 2, toHistory.length, 4).setValues(toHistory);
+    historySheet
+      .getRange(insertRow, 2, toHistory.length, 4)
+      .setValues(toHistory);
     // F, G열에 vlookup 수식 대신 실제 값 입력
-    const ownerSheet = ss.getSheetByName('영업자');
-    const ownerData = ownerSheet.getRange(2, 2, ownerSheet.getLastRow() - 1, 8).getValues(); // B2:I
+    const ownerSheet = ss.getSheetByName("영업자");
+    const ownerData = ownerSheet
+      .getRange(2, 2, ownerSheet.getLastRow() - 1, 8)
+      .getValues(); // B2:I
     const fgValues = [];
     for (let i = 0; i < toHistory.length; i++) {
       const searchValue = historySheet.getRange(insertRow + i, 5).getValue(); // E열 값
-      const found = ownerData.find(row => row[0] === searchValue); // row[0]은 B열
+      const found = ownerData.find((row) => row[0] === searchValue); // row[0]은 B열
       if (found) {
         fgValues.push([found[6], found[7]]); // H, I
       } else {
         fgValues.push(["", ""]);
       }
     }
-    historySheet.getRange(insertRow, 6, toHistory.length, 2).setValues(fgValues);
+    historySheet
+      .getRange(insertRow, 6, toHistory.length, 2)
+      .setValues(fgValues);
   }
 
   ui.alert("배민 정산이 완료되었습니다!");
