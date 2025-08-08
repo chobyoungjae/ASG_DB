@@ -71,31 +71,40 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
     return;
   }
 
-  // 0. 스케줄 시트 J열 값 목록 가져오기
-  let scheduleJValues = [];
-  let scheduleJCMap = {};
+  // 0. 스케줄 시트의 사업자번호 열 찾고 값 목록 가져오기
+  let scheduleBusinessNumValues = [];
+  let scheduleBusinessNumCMap = {};
+  let businessNumColumnIndex = -1;
+  
   if (scheduleSheet) {
     const scheduleLastRow = scheduleSheet.getLastRow();
     if (scheduleLastRow >= 2) {
-      scheduleJValues = scheduleSheet
-        .getRange(2, 10, scheduleLastRow - 1, 1)
-        .getValues()
-        .flat()
-        .map(String);
-      // J열과 C열 매핑
-      const scheduleJ = scheduleSheet
-        .getRange(2, 10, scheduleLastRow - 1, 1)
-        .getValues()
-        .flat()
-        .map(String);
-      const scheduleC = scheduleSheet
-        .getRange(2, 3, scheduleLastRow - 1, 1)
-        .getValues()
-        .flat()
-        .map(String);
-      scheduleJ.forEach((jVal, idx) => {
-        scheduleJCMap[jVal] = scheduleC[idx];
-      });
+      // 1행 헤더에서 "사업자번호" 열 찾기
+      const headers = scheduleSheet.getRange(1, 1, 1, scheduleSheet.getLastColumn()).getValues()[0];
+      businessNumColumnIndex = headers.findIndex(header => String(header).trim() === "사업자번호");
+      
+      if (businessNumColumnIndex !== -1) {
+        const businessNumCol = businessNumColumnIndex + 1; // 1-indexed
+        scheduleBusinessNumValues = scheduleSheet
+          .getRange(2, businessNumCol, scheduleLastRow - 1, 1)
+          .getValues()
+          .flat()
+          .map(String);
+        // 사업자번호 열과 C열 매핑
+        const scheduleBusinessNums = scheduleSheet
+          .getRange(2, businessNumCol, scheduleLastRow - 1, 1)
+          .getValues()
+          .flat()
+          .map(String);
+        const scheduleC = scheduleSheet
+          .getRange(2, 3, scheduleLastRow - 1, 1)
+          .getValues()
+          .flat()
+          .map(String);
+        scheduleBusinessNums.forEach((businessNumVal, idx) => {
+          scheduleBusinessNumCMap[businessNumVal] = scheduleC[idx];
+        });
+      }
     }
   }
 
@@ -183,9 +192,9 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
     const gValue = String(row[6]).trim();
     const cValue = String(row[2]).trim();
     const ownerRow = ownerData.find((r) => String(r[0]).trim() === gValue);
-    // O열: 스케줄 J열 값 중에 C열 값이 "하나라도" 있으면 ownerRow[5], 아니면 ""
+    // O열: 스케줄 사업자번호 열 값 중에 C열 값이 "하나라도" 있으면 ownerRow[5], 아니면 ""
     let oValue = "";
-    if (scheduleJValues.includes(cValue) && ownerRow) {
+    if (scheduleBusinessNumValues.includes(cValue) && ownerRow) {
       oValue = ownerRow[5];
     }
     // L = ownerRow[2] - oValue
@@ -197,10 +206,10 @@ function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
     }
     const mValue = ownerRow ? ownerRow[3] : "";
     const nValue = ownerRow ? ownerRow[4] : "";
-    // P열: 쿠팡 정산내역 C열(row[2]) 값이 스케줄 J열에 있으면, 그 J열에 해당하는 스케줄 C열 값을 넣음
+    // P열: 쿠팡 정산내역 C열(row[2]) 값이 스케줄 사업자번호열에 있으면, 그 사업자번호열에 해당하는 스케줄 C열 값을 넣음
     let pValue = "";
-    if (scheduleJCMap[cValue]) {
-      pValue = scheduleJCMap[cValue];
+    if (scheduleBusinessNumCMap[cValue]) {
+      pValue = scheduleBusinessNumCMap[cValue];
     }
     return [lValue, mValue, nValue, oValue, pValue];
   });
