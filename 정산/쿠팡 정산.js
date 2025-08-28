@@ -44,6 +44,8 @@ function showPersonalSettlement_원스컴퍼니() { showPersonalSettlement('원�
 function showPersonalSettlement_안성훈() { showPersonalSettlement('안성훈'); }
 function showPersonalSettlement_김강민() { showPersonalSettlement('김강민'); }
 function showPersonalSettlement_김정은() { showPersonalSettlement('김정은'); }
+function showPersonalSettlement_유니온() { showPersonalSettlement('유니온'); }
+
 
 function copyFilteredSortedDataToCoupangSheet_AppendAfterLast() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
