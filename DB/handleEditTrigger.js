@@ -107,10 +107,14 @@ function handleEditTrigger(e) {
       }
       const NUM_B_TO_Z = 25; // B~Z 열 개수
       if (insertRow) {
-        // 빈 행이 있으면 해당 행에 데이터 입력
-        const dataToInsert = targetRow.slice(1, 1 + NUM_B_TO_Z);
-        const colNames = targetHeaders.slice(1, 1 + NUM_B_TO_Z);
-        for (let i = 0; i < NUM_B_TO_Z; i++) {
+        // 실제로 값이 있는 헤더(열) 개수 구하기
+        const validHeaders = targetHeaders
+          .slice(1, 26)
+          .filter((h) => h !== undefined && h !== "");
+        const actualColCount = validHeaders.length;
+        const dataToInsert = targetRow.slice(1, 1 + actualColCount);
+        const colNames = targetHeaders.slice(1, 1 + actualColCount);
+        for (let i = 0; i < actualColCount; i++) {
           Logger.log(
             `B~Z 열 로그: 열=${String.fromCharCode(66 + i)} / 헤더=${
               colNames[i]
@@ -119,7 +123,7 @@ function handleEditTrigger(e) {
         }
         Logger.log("dataToInsert.length: " + dataToInsert.length);
         targetSheet
-          .getRange(insertRow, 2, 1, NUM_B_TO_Z)
+          .getRange(insertRow, 2, 1, actualColCount)
           .setValues([dataToInsert]);
         Logger.log("B~Z 빈 행에 데이터 입력: " + insertRow);
       } else {

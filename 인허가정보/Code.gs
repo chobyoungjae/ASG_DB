@@ -88,7 +88,7 @@ function setup() {
  */
 function setupHeaders(sheet) {
   // 1행: 메타 정보
-  sheet.getRange(1, 1, 1, 11).merge();
+  sheet.getRange(1, 1, 1, 13).merge();
   sheet.getRange(1, 1).setValue("최종 실행: 미실행");
 
   // 2행: 컬럼 헤더
@@ -103,7 +103,9 @@ function setupHeaders(sheet) {
     "주소",
     "사업자번호",       // I열 - 비즈노 API
     "법인번호",         // J열 - 비즈노 API
-    "사업자상태"        // K열 - 비즈노 API
+    "사업자상태",       // K열 - 비즈노 API
+    "과세유형",         // L열 - 비즈노 API (status=Y)
+    "폐업일"           // M열 - 비즈노 API
   ];
   sheet.getRange(2, 1, 1, headers.length).setValues([headers]);
 
@@ -126,6 +128,8 @@ function setupHeaders(sheet) {
   sheet.setColumnWidth(9, 130);  // 사업자번호
   sheet.setColumnWidth(10, 130); // 법인번호
   sheet.setColumnWidth(11, 100); // 사업자상태
+  sheet.setColumnWidth(12, 150); // 과세유형
+  sheet.setColumnWidth(13, 100); // 폐업일
 
   // 1~2행 고정
   sheet.setFrozenRows(2);
@@ -215,7 +219,7 @@ function fetchDataNow() {
     // 기존 데이터 삭제 (3행부터)
     const lastRow = sheet.getLastRow();
     if (lastRow >= 3) {
-      sheet.getRange(3, 1, lastRow - 2, 11).clearContent();
+      sheet.getRange(3, 1, lastRow - 2, 13).clearContent();
     }
 
     // 데이터 수집
@@ -371,12 +375,14 @@ function saveDataToSheet(sheet, data) {
       item.ADDR || "",               // 주소
       "",                            // 사업자번호 (나중에 조회)
       "",                            // 법인번호 (나중에 조회)
-      ""                             // 사업자상태 (나중에 조회)
+      "",                            // 사업자상태 (나중에 조회)
+      "",                            // 과세유형 (나중에 조회)
+      ""                             // 폐업일 (나중에 조회)
     ];
   });
 
   // 3행부터 데이터 입력
-  sheet.getRange(3, 1, rows.length, 11).setValues(rows);
+  sheet.getRange(3, 1, rows.length, 13).setValues(rows);
 
   Logger.log(`${rows.length}건 데이터 저장 완료`);
 }
@@ -389,7 +395,7 @@ function saveDataToSheet(sheet, data) {
  * 상호명으로 사업자번호 조회 (비즈노 API)
  * @param {string} companyName - 업소명
  * @param {string} ceoName - 대표자명 (선택)
- * @returns {object} - { bno: 사업자번호, cno: 법인번호, bstt: 사업자상태 }
+ * @returns {object} - { bno: 사업자번호, cno: 법인번호, bstt: 사업자상태, taxtype: 과세유형, endDt: 폐업일 }
  */
 function fetchBusinessNumber(companyName, ceoName = "") {
   try {
@@ -397,11 +403,11 @@ function fetchBusinessNumber(companyName, ceoName = "") {
     const biznoApiKey = PropertiesService.getScriptProperties().getProperty("BIZNO_API_KEY");
     if (!biznoApiKey) {
       Logger.log("❌ BIZNO_API_KEY가 설정되지 않았습니다.");
-      return { bno: "API키 없음", cno: "", bstt: "" };
+      return { bno: "API키 없음", cno: "", bstt: "", taxtype: "", endDt: "" };
     }
 
-    // URL 생성 (gb=3: 상호명검색)
-    let url = `${BIZNO_API_URL}?key=${biznoApiKey}&gb=3&q=${encodeURIComponent(companyName)}&type=json`;
+    // URL 생성 (gb=3: 상호명검색, status=Y: 국세청 실시간 조회)
+    let url = `${BIZNO_API_URL}?key=${biznoApiKey}&gb=3&q=${encodeURIComponent(companyName)}&status=Y&type=json`;
 
     // 대표자명 필터는 주석 처리 (검색 결과가 너무 줄어듦)
     // if (ceoName && ceoName.trim() !== "") {
@@ -422,7 +428,7 @@ function fetchBusinessNumber(companyName, ceoName = "") {
 
     if (statusCode !== 200) {
       Logger.log(`❌ API 오류 (${statusCode}): ${content}`);
-      return { bno: "조회실패", cno: "", bstt: "" };
+      return { bno: "조회실패", cno: "", bstt: "", taxtype: "", endDt: "" };
     }
 
     // JSON 파싱
@@ -434,7 +440,7 @@ function fetchBusinessNumber(companyName, ceoName = "") {
     // 에러 코드 확인
     if (json.resultCode !== 0) {
       Logger.log(`❌ 비즈노 에러 코드: ${json.resultCode}, 메시지: ${json.resultMsg}`);
-      return { bno: json.resultMsg, cno: "", bstt: "" };
+      return { bno: json.resultMsg, cno: "", bstt: "", taxtype: "", endDt: "" };
     }
 
     // 데이터 추출
@@ -444,7 +450,7 @@ function fetchBusinessNumber(companyName, ceoName = "") {
 
       if (validItems.length === 0) {
         Logger.log(`⚠️ 검색 결과 없음: ${companyName} (유효한 데이터 0건)`);
-        return { bno: "검색결과없음", cno: "", bstt: "" };
+        return { bno: "검색결과없음", cno: "", bstt: "", taxtype: "", endDt: "" };
       }
 
       Logger.log(`✅ 검색 결과 ${validItems.length}건 발견 (총 ${json.totalCount}건)`);
@@ -481,16 +487,18 @@ function fetchBusinessNumber(companyName, ceoName = "") {
       return {
         bno: selectedItem.bno || "",
         cno: selectedItem.cno || "",
-        bstt: selectedItem.bstt || ""
+        bstt: selectedItem.bstt || "",
+        taxtype: selectedItem.taxtype || "",
+        endDt: selectedItem.EndDt || ""
       };
     } else {
       Logger.log(`⚠️ 검색 결과 없음: ${companyName} (items 배열 없음)`);
-      return { bno: "검색결과없음", cno: "", bstt: "" };
+      return { bno: "검색결과없음", cno: "", bstt: "", taxtype: "", endDt: "" };
     }
 
   } catch (error) {
     Logger.log(`❌ 비즈노 API 오류: ${error.toString()}`);
-    return { bno: "오류", cno: "", bstt: "" };
+    return { bno: "오류", cno: "", bstt: "", taxtype: "", endDt: "" };
   }
 }
 
@@ -554,7 +562,7 @@ function fetchBusinessNumbers() {
 
     Logger.log(`오늘 사용 가능 건수: ${remainingQuota}/${BIZNO_DAILY_LIMIT}`);
 
-    const dataRange = sheet.getRange(3, 1, lastRow - 2, 11);
+    const dataRange = sheet.getRange(3, 1, lastRow - 2, 13);
     const data = dataRange.getValues();
 
     let successCount = 0;
@@ -602,10 +610,12 @@ function fetchBusinessNumbers() {
       // 비즈노 API 호출
       const result = fetchBusinessNumber(companyName, ceoName);
 
-      // 결과 저장 (I, J, K열)
-      data[rowIndex][8] = result.bno;   // 사업자번호
-      data[rowIndex][9] = result.cno;   // 법인번호
-      data[rowIndex][10] = result.bstt; // 사업자상태
+      // 결과 저장 (I, J, K, L, M열)
+      data[rowIndex][8] = result.bno;     // 사업자번호
+      data[rowIndex][9] = result.cno;     // 법인번호
+      data[rowIndex][10] = result.bstt;   // 사업자상태
+      data[rowIndex][11] = result.taxtype; // 과세유형
+      data[rowIndex][12] = result.endDt;   // 폐업일
 
       // 카운트 증가
       incrementQueryCount();
