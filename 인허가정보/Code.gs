@@ -403,12 +403,13 @@ function fetchBusinessNumber(companyName, ceoName = "") {
     // URL 생성 (gb=3: 상호명검색)
     let url = `${BIZNO_API_URL}?key=${biznoApiKey}&gb=3&q=${encodeURIComponent(companyName)}&type=json`;
 
-    // 대표자명 필터 추가 (선택사항)
-    if (ceoName && ceoName.trim() !== "") {
-      url += `&ceo=${encodeURIComponent(ceoName)}`;
-    }
+    // 대표자명 필터는 주석 처리 (검색 결과가 너무 줄어듦)
+    // if (ceoName && ceoName.trim() !== "") {
+    //   url += `&ceo=${encodeURIComponent(ceoName)}`;
+    // }
 
-    Logger.log(`비즈노 API 호출: ${companyName}`);
+    Logger.log(`비즈노 API 호출: ${companyName} (대표자: ${ceoName || "미지정"})`);
+    Logger.log(`  → 요청 URL: ${url}`);
 
     // HTTP 요청
     const response = UrlFetchApp.fetch(url, {
