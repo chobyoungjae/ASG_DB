@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(//c/Users/미쓰리/Desktop/깃허브/ASG_DB/**)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
